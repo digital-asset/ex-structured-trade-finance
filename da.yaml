@@ -1,0 +1,19 @@
+#
+# Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+project:
+  sdk-version: 0.12.3
+  scenario: DA.RefApps.StructuredTradeFinance.Main:setup
+  name: StructuredTradeFinance
+  source: daml/DA/RefApps/StructuredTradeFinance/Main.daml
+  parties:
+  - Manufacturer
+  - SubContractor1
+  - SubContractor2
+  - SubContractor3
+  - SubContractor4
+  - Bank
+  - ExternalAuditor
+version: 2

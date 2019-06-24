@@ -1,0 +1,341 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.StructuredTradeFinance.Main where
+
+import DA.List
+
+-- Role contract for the Contractor role. This role is entitled to
+-- involve subcontractors into the supply chain and create fulfillment requests
+template ContractorRole
+  with
+    contractor: Party
+  where
+    signatory contractor
+    controller contractor can
+      nonconsuming CreateOnboardingInvitation : ContractId OnboardingInvitation
+        with
+          subcontractor: Party
+        do create OnboardingInvitation with
+            contractors = [contractor]
+            subcontractor = subcontractor
+
+    controller contractor can -- first contractor
+      nonconsuming CreateFulfillmentRequest : ContractId FulfillmentRequest
+        with
+          subcontractor: Party
+          orderDetails: OrderDetails
+          contractualRelationship: ContractId ContractualRelationship
+        do
+          contRel <- fetch contractualRelationship
+          assertMsg ("No contractual relationship with " <> show subcontractor) (elem subcontractor contRel.contractors)
+          let firstContractor = head contRel.contractors
+          assertMsg "Actual party is not the first contractor in the contractual relationship" (contractor == firstContractor)
+          create FulfillmentRequest with
+            contractors = [firstContractor]
+            requestor = firstContractor
+            subcontractor = subcontractor
+            orderDetails = orderDetails
+            relationshipCid = contractualRelationship
+
+-- Invitation contract for a subcontractor
+template OnboardingInvitation
+  with
+    contractors: [Party]
+    subcontractor: Party
+  where
+    signatory contractors
+    controller subcontractor can
+      AcceptInvitation : ContractId ContractualRelationship
+        do create ContractualRelationship with contractors = contractors ++ [subcontractor]
+      RejectInvitation : ()
+        do return ()
+
+-- Business relationship among multiple contractors
+template ContractualRelationship
+  with
+    contractors: [Party]
+  where
+    signatory contractors
+
+    controller last contractors can -- latest contractor
+      OnboardSubcontractor : ContractId OnboardingInvitation
+        with
+          subcontractor: Party
+        do create OnboardingInvitation with contractors; subcontractor
+
+    controller head contractors can -- first contractor
+      nonconsuming RequestCertification : ContractId CertificationRequest
+        with
+          certifier: Party
+        do
+          create CertificationRequest with
+            requestor = head contractors
+            certifier = certifier
+            organisationsToCertify = contractors
+            observers = contractors
+
+data OrderDetails = OrderDetails
+  with
+    fulfillmentId: Text
+    productId: Text
+    quantity: Int
+    unitPrice: Decimal
+  deriving (Eq, Show)
+
+-- Fulfillment request for an order
+template FulfillmentRequest
+  with
+    requestor: Party
+    subcontractor: Party
+    orderDetails: OrderDetails
+    contractors: [Party]
+    relationshipCid: ContractId ContractualRelationship
+  where
+    signatory requestor
+    controller subcontractor can
+      Accept : ContractId Order
+        do
+          create Order with
+            contractors = contractors
+            requestor = requestor
+            subcontractor = subcontractor
+            orderDetails = orderDetails
+            relationshipCid = relationshipCid
+      Reject : ()
+        do return ()
+
+-- An Order where a subcontractor can involve further subcontractor
+-- or request a loan from a financier
+template Order
+  with
+    requestor: Party
+    subcontractor: Party
+    orderDetails: OrderDetails
+    contractors: [Party]
+    relationshipCid: ContractId ContractualRelationship
+  where
+    signatory requestor, subcontractor
+
+    controller subcontractor can
+      nonconsuming Subcontract : ContractId FulfillmentRequest
+        with
+          newSubcontractor: Party
+          productId: Text
+          quantity: Int
+          unitPrice: Decimal
+        do
+          relationship <- fetch relationshipCid
+          assertMsg ("No contractual relationship with " <> show newSubcontractor) (elem newSubcontractor relationship.contractors)
+          let newOrderDetails = OrderDetails with
+                  fulfillmentId = orderDetails.fulfillmentId
+                  productId = productId
+                  quantity = quantity
+                  unitPrice = unitPrice
+          create FulfillmentRequest with
+            contractors = contractors ++ [subcontractor]
+            requestor = subcontractor
+            subcontractor = newSubcontractor
+            orderDetails = newOrderDetails
+            relationshipCid = relationshipCid
+
+    controller subcontractor can
+      nonconsuming RequestLoan : ContractId LoanRequest
+        with
+          financier: Party
+          requestedAmount: Decimal
+          currency: Text
+        do create LoanRequest with
+            requestor = subcontractor
+            contractors = contractors
+            financier = financier
+            requestedAmount = requestedAmount
+            currency = currency
+            orderDetails = orderDetails
+
+-- Certification request from an external auditor for selected subcontractors
+template CertificationRequest
+  with
+    requestor: Party
+    certifier: Party
+    organisationsToCertify: [Party]
+    observers: [Party]
+  where
+    signatory requestor
+    observer observers
+    controller certifier can
+      Certify : ContractId CertificationApproval
+        do
+          now <- getTime
+          create CertificationApproval with
+            requestor = requestor
+            certifier = certifier
+            organisationsCertified = organisationsToCertify
+            observers = observers
+
+-- Represents a certification approval from an external auditor
+-- for a contractor chain requested by the lead of the chain
+template CertificationApproval
+  with
+    requestor: Party
+    certifier: Party
+    organisationsCertified: [Party]
+    observers: [Party]
+  where
+    signatory certifier
+    observer requestor :: observers
+
+-- A loan request from a financier
+template LoanRequest
+  with
+    requestor: Party
+    contractors: [Party]
+    financier: Party
+    requestedAmount: Decimal
+    currency: Text
+    orderDetails: OrderDetails
+  where
+    signatory requestor
+    controller financier can
+      ApproveLoan: ContractId LoanApproval
+        with
+          approvedAmount: Decimal
+        do create LoanApproval with requestor; financier; currency; approvedAmount
+      RejectLoan: ContractId LoanRejection
+        with
+          rejectionReason: Text
+        do create LoanRejection with
+            requestor = requestor
+            financier = financier
+            rejectionReason = "CREDIT CHECK FAILED"
+
+-- Represents that a loan request has been rejected by the financier
+template LoanRejection
+  with
+    requestor: Party
+    financier: Party
+    rejectionReason: Text
+  where
+    signatory financier
+    observer requestor
+
+-- Represents that a loan request has been approved by the financier
+template LoanApproval
+  with
+    requestor: Party
+    financier: Party
+    approvedAmount: Decimal
+    currency: Text
+  where
+    signatory financier
+    observer requestor
+
+setup = scenario do
+  manufacturer <- getParty "Manufacturer"
+  subContractor1 <- getParty "SubContractor1"
+  subContractor2 <- getParty "SubContractor2"
+  subContractor3 <- getParty "SubContractor3"
+  subContractor4 <- getParty "SubContractor4"
+  submit manufacturer do create ContractorRole with contractor = manufacturer
+  submit subContractor1 do create ContractorRole with contractor = subContractor1
+  submit subContractor2 do create ContractorRole with contractor = subContractor2
+  submit subContractor3 do create ContractorRole with contractor = subContractor3
+  submit subContractor4 do create ContractorRole with contractor = subContractor4
+  return (manufacturer, subContractor1, subContractor2, subContractor3, subContractor4)
+
+orderTest = scenario do
+  (manufacturer, subContractor1, subContractor2, subContractor3, _subContractor4) <- setup
+
+  let orderDetails = OrderDetails with { fulfillmentId = "F1"; productId = "Product1"; quantity = 5000; unitPrice = 1000.0 }
+
+  -- Contractors onboard subcontractors
+  contractorRole <- submit manufacturer do
+                    create ContractorRole with contractor = manufacturer
+  invManSub1 <- submit manufacturer do
+                    create OnboardingInvitation with
+                            contractors = [manufacturer]
+                            subcontractor = subContractor1
+  relManSub1 <- submit subContractor1 do exercise invManSub1 AcceptInvitation
+  invSub1Sub2 <- submit subContractor1 do
+                    exercise relManSub1 OnboardSubcontractor with
+                            subcontractor = subContractor2
+  relSub1Sub2 <- submit subContractor2 do exercise invSub1Sub2 AcceptInvitation
+  invSub2Sub3 <- submit subContractor2 do
+                    exercise relSub1Sub2 OnboardSubcontractor with
+                            subcontractor = subContractor3
+  relSub2Sub3 <- submit subContractor3 do exercise invSub2Sub3 AcceptInvitation
+
+  -- Fulfillment request down the contractor chain
+  fr1 <- submit manufacturer do
+                    exercise contractorRole CreateFulfillmentRequest with
+                            subcontractor = subContractor1
+                            orderDetails = orderDetails
+                            contractualRelationship = relSub2Sub3
+  o1 <- submit subContractor1 do exercise fr1 Accept
+
+  fr2 <- submit subContractor1 do
+                    exercise o1 Subcontract with
+                          newSubcontractor = subContractor2
+                          productId = "Product2"
+                          quantity = 4000
+                          unitPrice = 300.0
+  o2 <- submit subContractor2 do exercise fr2 Accept
+
+  fr3 <- submit subContractor2 do
+                    exercise o2 Subcontract with
+                          newSubcontractor = subContractor3
+                          productId = "Product3"
+                          quantity = 12000
+                          unitPrice = 50.0
+  o3 <- submit subContractor3 do exercise fr3 Accept
+
+  return (subContractor3, o3)
+
+loanApprovalTest = scenario $ do
+  financier <- getParty "HSBC"
+  (subContractor3, order) <- orderTest
+  -- Loan request and approval
+  loanRequest <- submit subContractor3 do exercise order RequestLoan with financier; requestedAmount = 600000.0; currency = "USD"
+  loanApproval <- submit financier do exercise loanRequest ApproveLoan with approvedAmount = 600000.0
+  return ()
+
+loanRejectionTest = scenario $ do
+  financier <- getParty "HSBC"
+  (subContractor3, order) <- orderTest
+  -- Loan request and rejection
+  loanRequest <- submit subContractor3 do exercise order RequestLoan with financier; requestedAmount = 600000.0; currency = "USD"
+  loanRejection <- submit financier do exercise loanRequest RejectLoan with rejectionReason = "SHADY CHARACTER"
+  return ()
+
+certificationTest = scenario do
+  manufacturer <- getParty "Manufacturer"
+  subContractor1 <- getParty "SubContractor1"
+  subContractor2 <- getParty "SubContractor2"
+  subContractor3 <- getParty "SubContractor3"
+  financier <- getParty "Bank"
+  certifier <- getParty "ExternalAuditor"
+
+  let orderDetails = OrderDetails with { fulfillmentId = "F1"; productId = "Product1"; quantity = 5000; unitPrice = 1000.0 }
+
+  -- Contractors onboard subcontractors
+  invManSub1 <- submit manufacturer do
+                    create OnboardingInvitation with
+                            contractors = [manufacturer]
+                            subcontractor = subContractor1
+  relManSub1 <- submit subContractor1 do exercise invManSub1 AcceptInvitation
+  invSub1Sub2 <- submit subContractor1 do
+                    exercise relManSub1 OnboardSubcontractor with
+                            subcontractor = subContractor2
+  relSub1Sub2 <- submit subContractor2 do exercise invSub1Sub2 AcceptInvitation
+  invSub2Sub3 <- submit subContractor2 do
+                    exercise relSub1Sub2 OnboardSubcontractor with
+                            subcontractor = subContractor3
+  relSub2Sub3 <- submit subContractor3 do exercise invSub2Sub3 AcceptInvitation
+
+  certReq <- submit manufacturer do exercise relSub2Sub3 RequestCertification with certifier
+  submit certifier do exercise certReq Certify
+
+  return ()
