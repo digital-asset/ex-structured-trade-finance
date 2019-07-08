@@ -10,40 +10,32 @@ The Structured Trade Finance application demonstrates a simplified example of cr
 #### Prerequisites
 
 Be sure you have the following installed:
-* DAML SDK 0.12.3
+* DAML SDK
 * Docker
-
-After installing the DAML SDK, you can use `da use 0.12.3` to switch to that version. If you use Docker, this step is not needed.
 
 ### Starting the App
 There are two options:
 
 #### Option 1: Start App with Docker
 
-1.  Type:
+1. Execute:
+```
+daml build
+```
+2.  Type:
 ```
 docker-compose up --build
 ```
-2.  Open UI in a new browser tab with http://localhost:7500.
+3.  Open UI in a new browser tab with http://localhost:7500.
 
 #### Option 2: Start App in Stand-Alone Mode
 
-1. Compile and package code into an executable DAR.
+1. Start the Sandbox with Navigator and with the DAR deployed.
 ```
-da run damlc -- package daml/DA/RefApps/StructuredTradeFinance/Main.daml target/StructuredTradeFinance
-```
-
-2. Start the Sandbox with the DAR deployed.
-```
-da run sandbox -- --port 7600 --scenario DA.RefApps.StructuredTradeFinance.Main:setup target/StructuredTradeFinance.dar
+daml start
 ```
 
-3. In another terminal window, run Navigator.
-```
-da run navigator -- server localhost 7600 --port 7500 --config-file ui-backend.conf
-```
-
-4. Open UI in a new browser tab with http://localhost:7500.
+2. Open UI in a new browser tab with http://localhost:7500.
 
 Disclaimer: "localhost" which the application is run on should not have a web facing ip address assigned to it.
 
@@ -55,8 +47,7 @@ Disclaimer: "localhost" which the application is run on should not have a web fa
 
 #### Stopping Stand-Alone Run
 
-1. Use **CTRL+C** to stop Navigator.
-2. Use **CTRL+C** to stop Sandbox.
+1. Use **CTRL+C** to stop Sandbox and Navigator.
 
 ### Resetting the Prototype
 
