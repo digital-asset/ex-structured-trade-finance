@@ -18,11 +18,15 @@ There are two options:
 
 #### Option 1: Start App with Docker
 
-1.  Type:
+1. Execute:
+```
+daml build
+```
+2.  Type:
 ```
 docker-compose up --build
 ```
-2.  Open UI in a new browser tab with http://localhost:7500.
+3.  Open UI in a new browser tab with http://localhost:7500.
 
 #### Option 2: Start App in Stand-Alone Mode
 
