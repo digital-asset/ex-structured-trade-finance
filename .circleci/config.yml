@@ -9,6 +9,16 @@ executors:
   daml-executor:
     docker:
       - image: circleci/openjdk:11.0-jdk
+  docker_buildpack:
+    docker:
+      - image: circleci/buildpack-deps:xenial
+
+only-release-tags: &only-release-tags
+  filters:
+    tags:
+      only: /^v.*/
+    branches:
+      ignore: /.*/
 
 commands:
   install_sdk:
@@ -51,6 +61,21 @@ jobs:
           name: Run Blackduck Detect
           command: |
             bash <(curl -s https://raw.githubusercontent.com/DACH-NY/security-blackduck/master/synopsys-detect) ci-build digitalasset_ex-structured-trade-finance master --logging.level.com.synopsys.integration=DEBUG
+      - persist_to_workspace:
+          root: target
+          paths:
+            - "*.dar"
+
+  github_release:
+    executor: docker_buildpack
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Push a new github release
+          command: |
+            ./scripts/release.sh ex-structured-trade-finance
 
 workflows:
   version: 2
@@ -59,3 +84,13 @@ workflows:
       - daml_test:
           daml_sdk_version: "0.13.13"
           context: blackduck
+  build_and_release:
+    jobs:
+      - daml_test:
+          <<: *only-release-tags
+          daml_sdk_version: "0.13.12"
+      - github_release:
+          context: github-refapp-repo-context
+          requires:
+            - daml_test
+          <<: *only-release-tags
