@@ -47,7 +47,7 @@ jobs:
       - run:
           command: |
             export PATH=${HOME}/.daml/bin:${PATH}
-            daml build -o target/structured-trade-finance.dar
+            daml build -o target/StructuredTradeFinance.dar
             daml test --junit target/daml-test-reports/daml-test.xml --files daml/DA/RefApps/StructuredTradeFinance/Main.daml
       - save_cache:
           paths:
