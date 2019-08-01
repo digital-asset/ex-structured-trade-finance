@@ -5,11 +5,11 @@
 
 FROM ubuntu:18.04
 
-ARG sdk_version=0.13.13
+ARG sdk_version=0.13.14
 
 WORKDIR /home/sdk
 
-COPY dist/StructuredTradeFinance.dar /home/sdk/
+COPY .daml/dist/StructuredTradeFinance.dar /home/sdk/
 COPY scripts/install-daml.sh /home/sdk/
 
 RUN /bin/bash -c "apt-get update --no-show-upgraded &&  apt-get install wget openjdk-8-jdk -y"
