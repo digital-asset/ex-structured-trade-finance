@@ -1,4 +1,4 @@
-# Read Me -- Structured Trade Finance
+# Reference Application: Structured Trade Finance
 ## Introduction
 
 The Structured Trade Finance application demonstrates a simplified example of creating a chain of participants between a Manufacturer and its Tier-1, Tier-2, and Tier-3 subcontractors. An External Auditor participant is created so Participants can request external certification for the supply chain (e.g. for Fairtrade, sustainability reporting, etc.). Subcontractors can request trade finance from a Bank with increased transparency because they can demonstrate their chain of partners and orders.    
@@ -12,54 +12,56 @@ The Structured Trade Finance application demonstrates a simplified example of cr
 #### Prerequisites
 
 Be sure you have the following installed:
-* DAML SDK
-* Docker
+- [DAML SDK](https://docs.daml.com/)
+- Docker
+
+#### Build
+
+Type:
+```shell
+daml build
+```
+
+**Note:** If you change the DAML models locally, you need to re-run this command before starting the application.
 
 ### Starting the App
+
+**Note:** Make sure you have built the application (see: [Build](#build)).
+
 There are two options:
 
 #### Option 1: Start App with Docker
 
-1. Execute:
-```
-daml build
-```
-2.  Type:
-```
-docker-compose up --build
-```
-3.  Open UI in a new browser tab with http://localhost:7500.
+1. Type:
+    ```shell
+    docker-compose up --build
+    ```
+2. Open UI in a new browser tab with http://localhost:7500
 
-#### Option 2: Start App in Stand-Alone Mode
+#### Option 2: Start App in Standalone
 
-1. Start the Sandbox with Navigator and with the DAR deployed.
-```
-daml start
-```
-
-2. Open UI in a new browser tab with http://localhost:7500.
-
-Disclaimer: "localhost" which the application is run on should not have a web facing ip address assigned to it.
+1. Start the DAML Sandbox and Navigator. Type:
+    ```shell
+    daml start
+    ```
+    The navigator will automatically open in new browser tab at http://localhost:7500
 
 ### Stopping the App
 
 #### Stopping Dockerized Run
-1.  Close the browser tab.
-2.  Stop the Docker containers or bots by pressing **Ctrl+C**.
+1. Stop the Docker containers by pressing **Ctrl+C**. (Alternatively, you can also stop it by typing `docker-compose down`.)
 
-#### Stopping Stand-Alone Run
-
-1. Use **CTRL+C** to stop Sandbox and Navigator.
+#### Stopping Standalone Run
+1. Stop the Sandbox and the Navigator by pressing **Ctrl+C** in the DAML assistant.
 
 ### Resetting the Prototype
 
 Reset the application by following these steps:
+1.  Stop the app by following the steps in [Stopping the App](#stopping-the-app) section.
+2.  Start the app in [Docker](#using-docker) or [Standalone](#standalone-mode) by following the steps in the relevant section.
 
-**1.** Stop the App by following the steps in Stopping the App section.
 
-**2.** Start the App by following the steps in Starting the App section.
-
-## This Guide
+## User Guide
 
 This User Guide will take you step-by-step through the whole stuctured trade finance process of creating a simplified supply chain between participants, requesting a certification from an external auditor entity for the supply chain, creating orders between a manufacturer and its multiple tier subcontractors, and finally, a subcontractor asking for trade finance from a bank and being able to present an immutable audit trail of its order history.
 
@@ -286,4 +288,5 @@ SubContractor3 needs financing to be able to meet its order from SubContractor2.
 _**Note:** Once Bank has approved the Loan Request, it appears in the Approved Loans tab of Bank and SubContractor3._
 
 
-© 2019 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+CONFIDENTIAL © 2019 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+Any unauthorized use, duplication or distribution is strictly prohibited.
