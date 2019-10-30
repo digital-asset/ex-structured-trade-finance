@@ -11,6 +11,6 @@ WORKDIR /home/sdk
 
 COPY .daml/dist/StructuredTradeFinance.dar /home/sdk/
 
-EXPOSE 7600
+EXPOSE 6865
 
-CMD ~/.daml/bin/daml sandbox -- --port 7600 --scenario DA.RefApps.StructuredTradeFinance.Main:setup StructuredTradeFinance.dar
+CMD ~/.daml/bin/daml sandbox -- --port 6865 --scenario DA.RefApps.StructuredTradeFinance.Main:setup StructuredTradeFinance.dar
