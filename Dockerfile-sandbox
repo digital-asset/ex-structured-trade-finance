@@ -7,9 +7,14 @@ ARG sdk_vsn=0.13.30
 
 FROM digitalasset/daml-sdk:${sdk_vsn}
 
-WORKDIR /home/sdk
+WORKDIR /home/daml
 
-COPY .daml/dist/StructuredTradeFinance.dar /home/sdk/
+COPY .daml/dist/StructuredTradeFinance.dar /home/daml/
+
+# Need the root user to set appropriate ownership of the DAR file.
+USER root
+RUN chown daml StructuredTradeFinance.dar
+USER daml
 
 EXPOSE 6865
 
