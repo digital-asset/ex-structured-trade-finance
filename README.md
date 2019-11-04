@@ -287,5 +287,5 @@ SubContractor3 needs financing to be able to meet its order from SubContractor2.
 
 _**Note:** Once Bank has approved the Loan Request, it appears in the Approved Loans tab of Bank and SubContractor3._
 
-
-© 2019 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+CONFIDENTIAL © 2019 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+Any unauthorized use, duplication or distribution is strictly prohibited.
