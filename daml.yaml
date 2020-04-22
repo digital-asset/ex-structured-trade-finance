@@ -5,8 +5,8 @@
 
 sdk-version: 1.0.0
 name: StructuredTradeFinance
-source: daml/DA/RefApps/StructuredTradeFinance/Main.daml
-scenario: DA.RefApps.StructuredTradeFinance.Main:setup
+source: daml
+init-script: DA.RefApps.StructuredTradeFinance.Main:initialize
 parties:
   - Manufacturer
   - SubContractor1
@@ -16,7 +16,7 @@ parties:
   - Bank
   - ExternalAuditor
 version: 2.0.0
-exposed-modules: []
 dependencies:
   - daml-prim
   - daml-stdlib
+  - daml-script

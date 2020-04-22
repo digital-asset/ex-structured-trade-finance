@@ -7,6 +7,9 @@ daml 1.2
 module DA.RefApps.StructuredTradeFinance.Main where
 
 import DA.List
+import DA.Optional
+
+import Daml.Script
 
 -- Role contract for the Contractor role. This role is entitled to
 -- involve subcontractors into the supply chain and create fulfillment requests
@@ -245,6 +248,21 @@ setup = scenario do
   submit subContractor3 do create ContractorRole with contractor = subContractor3
   submit subContractor4 do create ContractorRole with contractor = subContractor4
   return (manufacturer, subContractor1, subContractor2, subContractor3, subContractor4)
+
+initialize: Script ()
+initialize = do
+  let
+    manufacturer = fromSome (partyFromText "Manufacturer")
+    subContractor1 = fromSome (partyFromText "SubContractor1")
+    subContractor2 = fromSome (partyFromText "SubContractor2")
+    subContractor3 = fromSome (partyFromText "SubContractor3")
+    subContractor4 = fromSome (partyFromText "SubContractor4")
+  submit manufacturer do createCmd ContractorRole with contractor = manufacturer
+  submit subContractor1 do createCmd ContractorRole with contractor = subContractor1
+  submit subContractor2 do createCmd ContractorRole with contractor = subContractor2
+  submit subContractor3 do createCmd ContractorRole with contractor = subContractor3
+  submit subContractor4 do createCmd ContractorRole with contractor = subContractor4
+  pure ()
 
 orderTest = scenario do
   (manufacturer, subContractor1, subContractor2, subContractor3, _subContractor4) <- setup
