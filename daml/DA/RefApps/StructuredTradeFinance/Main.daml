@@ -7,7 +7,6 @@ daml 1.2
 module DA.RefApps.StructuredTradeFinance.Main where
 
 import DA.List
-import DA.Optional
 
 import Daml.Script
 
@@ -236,124 +235,109 @@ template LoanApproval
     signatory financier
     observer requestor
 
-setup = scenario do
-  manufacturer <- getParty "Manufacturer"
-  subContractor1 <- getParty "SubContractor1"
-  subContractor2 <- getParty "SubContractor2"
-  subContractor3 <- getParty "SubContractor3"
-  subContractor4 <- getParty "SubContractor4"
-  submit manufacturer do create ContractorRole with contractor = manufacturer
-  submit subContractor1 do create ContractorRole with contractor = subContractor1
-  submit subContractor2 do create ContractorRole with contractor = subContractor2
-  submit subContractor3 do create ContractorRole with contractor = subContractor3
-  submit subContractor4 do create ContractorRole with contractor = subContractor4
-  return (manufacturer, subContractor1, subContractor2, subContractor3, subContractor4)
-
-initialize: Script ()
-initialize = do
-  let
-    manufacturer = fromSome (partyFromText "Manufacturer")
-    subContractor1 = fromSome (partyFromText "SubContractor1")
-    subContractor2 = fromSome (partyFromText "SubContractor2")
-    subContractor3 = fromSome (partyFromText "SubContractor3")
-    subContractor4 = fromSome (partyFromText "SubContractor4")
+initialize = script do
+  manufacturer <- allocatePartyWithHint "Manufacturer" (PartyIdHint "Manufacturer")
+  subContractor1 <- allocatePartyWithHint "SubContractor1" (PartyIdHint "SubContractor1")
+  subContractor2 <- allocatePartyWithHint "SubContractor2" (PartyIdHint "SubContractor2")
+  subContractor3 <- allocatePartyWithHint "SubContractor3" (PartyIdHint "SubContractor3")
+  subContractor4 <- allocatePartyWithHint "SubContractor4" (PartyIdHint "SubContractor4")
   submit manufacturer do createCmd ContractorRole with contractor = manufacturer
   submit subContractor1 do createCmd ContractorRole with contractor = subContractor1
   submit subContractor2 do createCmd ContractorRole with contractor = subContractor2
   submit subContractor3 do createCmd ContractorRole with contractor = subContractor3
   submit subContractor4 do createCmd ContractorRole with contractor = subContractor4
-  pure ()
+  pure (manufacturer, subContractor1, subContractor2, subContractor3, subContractor4)
 
-orderTest = scenario do
-  (manufacturer, subContractor1, subContractor2, subContractor3, _subContractor4) <- setup
+orderTest = script do
+  (manufacturer, subContractor1, subContractor2, subContractor3, _subContractor4) <- initialize
 
   let orderDetails = OrderDetails with { fulfillmentId = "F1"; productId = "Product1"; quantity = 5000; unitPrice = 1000.0 }
 
   -- Contractors onboard subcontractors
   contractorRole <- submit manufacturer do
-                    create ContractorRole with contractor = manufacturer
+                    createCmd ContractorRole with contractor = manufacturer
   invManSub1 <- submit manufacturer do
-                    create OnboardingInvitation with
+                    createCmd OnboardingInvitation with
                             contractors = [manufacturer]
                             subcontractor = subContractor1
-  relManSub1 <- submit subContractor1 do exercise invManSub1 AcceptInvitation
+  relManSub1 <- submit subContractor1 do exerciseCmd invManSub1 AcceptInvitation
   invSub1Sub2 <- submit subContractor1 do
-                    exercise relManSub1 OnboardSubcontractor with
+                    exerciseCmd relManSub1 OnboardSubcontractor with
                             subcontractor = subContractor2
-  relSub1Sub2 <- submit subContractor2 do exercise invSub1Sub2 AcceptInvitation
+  relSub1Sub2 <- submit subContractor2 do exerciseCmd invSub1Sub2 AcceptInvitation
   invSub2Sub3 <- submit subContractor2 do
-                    exercise relSub1Sub2 OnboardSubcontractor with
+                    exerciseCmd relSub1Sub2 OnboardSubcontractor with
                             subcontractor = subContractor3
-  relSub2Sub3 <- submit subContractor3 do exercise invSub2Sub3 AcceptInvitation
+  relSub2Sub3 <- submit subContractor3 do exerciseCmd invSub2Sub3 AcceptInvitation
 
   -- Fulfillment request down the contractor chain
   fr1 <- submit manufacturer do
-                    exercise contractorRole CreateFulfillmentRequest with
+                    exerciseCmd contractorRole CreateFulfillmentRequest with
                             subcontractor = subContractor1
                             orderDetails = orderDetails
                             contractualRelationship = relSub2Sub3
-  o1 <- submit subContractor1 do exercise fr1 Accept
+  o1 <- submit subContractor1 do exerciseCmd fr1 Accept
 
   fr2 <- submit subContractor1 do
-                    exercise o1 Subcontract with
+                    exerciseCmd o1 Subcontract with
                           newSubcontractor = subContractor2
                           productId = "Product2"
                           quantity = 4000
                           unitPrice = 300.0
-  o2 <- submit subContractor2 do exercise fr2 Accept
+  o2 <- submit subContractor2 do exerciseCmd fr2 Accept
 
   fr3 <- submit subContractor2 do
-                    exercise o2 Subcontract with
+                    exerciseCmd o2 Subcontract with
                           newSubcontractor = subContractor3
                           productId = "Product3"
                           quantity = 12000
                           unitPrice = 50.0
-  o3 <- submit subContractor3 do exercise fr3 Accept
+  o3 <- submit subContractor3 do exerciseCmd fr3 Accept
 
   return (subContractor3, o3)
 
-loanApprovalTest = scenario $ do
-  financier <- getParty "HSBC"
+loanApprovalTest = script do
+  financier <- allocateParty "HSBC"
   (subContractor3, order) <- orderTest
   -- Loan request and approval
-  loanRequest <- submit subContractor3 do exercise order RequestLoan with financier; requestedAmount = 600000.0; currency = "USD"
-  loanApproval <- submit financier do exercise loanRequest ApproveLoan with approvedAmount = 600000.0
+  loanRequest <- submit subContractor3 do exerciseCmd order RequestLoan with financier; requestedAmount = 600000.0; currency = "USD"
+  loanApproval <- submit financier do exerciseCmd loanRequest ApproveLoan with approvedAmount = 600000.0
   return ()
 
-loanRejectionTest = scenario $ do
-  financier <- getParty "HSBC"
+loanRejectionTest = script do
+  financier <- allocateParty "HSBC"
   (subContractor3, order) <- orderTest
   -- Loan request and rejection
-  loanRequest <- submit subContractor3 do exercise order RequestLoan with financier; requestedAmount = 600000.0; currency = "USD"
-  loanRejection <- submit financier do exercise loanRequest RejectLoan with rejectionReason = "SHADY CHARACTER"
+  loanRequest <- submit subContractor3 do exerciseCmd order RequestLoan with financier; requestedAmount = 600000.0; currency = "USD"
+  loanRejection <- submit financier do exerciseCmd loanRequest RejectLoan with rejectionReason = "SHADY CHARACTER"
   return ()
 
-certificationTest = scenario do
-  manufacturer <- getParty "Manufacturer"
-  subContractor1 <- getParty "SubContractor1"
-  subContractor2 <- getParty "SubContractor2"
-  subContractor3 <- getParty "SubContractor3"
-  financier <- getParty "Bank"
-  certifier <- getParty "ExternalAuditor"
+certificationTest = script do
+  manufacturer <- allocateParty "Manufacturer"
+  subContractor1 <- allocateParty "SubContractor1"
+  subContractor2 <- allocateParty "SubContractor2"
+  subContractor3 <- allocateParty "SubContractor3"
+  financier <- allocateParty "Bank"
+  certifier <- allocateParty "ExternalAuditor"
 
   let orderDetails = OrderDetails with { fulfillmentId = "F1"; productId = "Product1"; quantity = 5000; unitPrice = 1000.0 }
 
   -- Contractors onboard subcontractors
   invManSub1 <- submit manufacturer do
-                    create OnboardingInvitation with
+                    createCmd OnboardingInvitation with
                             contractors = [manufacturer]
                             subcontractor = subContractor1
-  relManSub1 <- submit subContractor1 do exercise invManSub1 AcceptInvitation
+  relManSub1 <- submit subContractor1 do exerciseCmd invManSub1 AcceptInvitation
   invSub1Sub2 <- submit subContractor1 do
-                    exercise relManSub1 OnboardSubcontractor with
+                    exerciseCmd relManSub1 OnboardSubcontractor with
                             subcontractor = subContractor2
-  relSub1Sub2 <- submit subContractor2 do exercise invSub1Sub2 AcceptInvitation
+  relSub1Sub2 <- submit subContractor2 do exerciseCmd invSub1Sub2 AcceptInvitation
   invSub2Sub3 <- submit subContractor2 do
-                    exercise relSub1Sub2 OnboardSubcontractor with
+                    exerciseCmd relSub1Sub2 OnboardSubcontractor with
                             subcontractor = subContractor3
-  relSub2Sub3 <- submit subContractor3 do exercise invSub2Sub3 AcceptInvitation
+  relSub2Sub3 <- submit subContractor3 do exerciseCmd invSub2Sub3 AcceptInvitation
 
-  certReq <- submit manufacturer do exercise relSub2Sub3 RequestCertification with certifier
-  submit certifier do exercise certReq Certify
+  certReq <- submit manufacturer do exerciseCmd relSub2Sub3 RequestCertification with certifier
+  submit certifier do exerciseCmd certReq Certify
 
   return ()
