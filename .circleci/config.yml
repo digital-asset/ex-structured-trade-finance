@@ -57,10 +57,6 @@ jobs:
           path: target/daml-test-reports
       - store_artifacts:
           path: target/daml-test-reports
-      - run:
-          name: Run Blackduck Detect
-          command: |
-            bash <(curl -s https://raw.githubusercontent.com/DACH-NY/security-blackduck/master/synopsys-detect) ci-build digitalasset_ex-structured-trade-finance master --logging.level.com.synopsys.integration=DEBUG
       - persist_to_workspace:
           root: target
           paths:
@@ -116,7 +112,6 @@ workflows:
     jobs:
       - daml_test:
           daml_sdk_version: "1.5.0"
-          context: blackduck
       - blackduck:
           daml_sdk_version: "1.5.0"
           context: blackduck
@@ -125,7 +120,6 @@ workflows:
       - daml_test:
           <<: *only-release-tags
           daml_sdk_version: "1.5.0"
-          context: blackduck
       - github_release:
           context: github-refapp-repo-context
           requires:
