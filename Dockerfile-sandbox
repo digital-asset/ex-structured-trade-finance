@@ -3,18 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-ARG sdk_vsn=1.4.0
+ARG sdk_vsn=1.5.0
 
 FROM digitalasset/daml-sdk:${sdk_vsn}
 
 WORKDIR /home/daml
-
-COPY .daml/dist/StructuredTradeFinance.dar /home/daml/
+COPY daml.yaml .
+COPY daml ./daml
 
 USER root
-RUN chown daml StructuredTradeFinance.dar
+RUN chown -R daml daml.yaml
+RUN chown daml -R daml/
 USER daml
 
 EXPOSE 6865
 
-CMD ~/.daml/bin/daml sandbox -- --address 0.0.0.0 --port 6865 --scenario DA.RefApps.StructuredTradeFinance.Main:setup StructuredTradeFinance.dar
+CMD ~/.daml/bin/daml start \
+  --sandbox-option="--address=0.0.0.0" \
+  --sandbox-port 6865 \
+  --json-api-port=none \
+  --start-navigator=false
