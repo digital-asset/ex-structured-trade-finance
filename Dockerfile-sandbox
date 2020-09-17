@@ -12,13 +12,14 @@ COPY daml.yaml .
 COPY daml ./daml
 
 USER root
-RUN chown daml StructuredTradeFinance.dar
+RUN chown -R daml daml.yaml
+RUN chown daml -R daml/
 USER daml
 
 EXPOSE 6865
 
 CMD ~/.daml/bin/daml start \
-  --sandbox-option="--address 0.0.0.0" \
+  --sandbox-option="--address=0.0.0.0" \
   --sandbox-port 6865 \
   --json-api-port=none \
   --start-navigator=false
